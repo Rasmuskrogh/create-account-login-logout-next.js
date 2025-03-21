@@ -1,8 +1,9 @@
 "use server";
+import { redirect } from "next/navigation";
 
 import { hashUserPassword } from "@/lib/hash";
 import { createUser } from "@/lib/user";
-import { redirect } from "next/navigation";
+import { createAuthSession } from "@/lib/auth";
 
 export async function signup(prevState, formData) {
   const email = formData.get("email");
@@ -11,7 +12,7 @@ export async function signup(prevState, formData) {
   let errors = {};
 
   if (!email.includes("@")) {
-    errors.email = "Please enter a valid email address";
+    errors.email = "Please enter a valid email address.";
   }
 
   if (password.trim().length < 8) {
@@ -23,13 +24,14 @@ export async function signup(prevState, formData) {
       errors,
     };
   }
+
   const hashedPassword = hashUserPassword(password);
   try {
-    createUser(email, hashedPassword);
+    const id = createUser(email, hashedPassword);
+    await createAuthSession(id);
+    redirect("/training");
   } catch (error) {
-    console.log(error.code);
-
-    if (error.message.includes("UNIQUE constraint failed")) {
+    if (error.code === "SQLITE_CONSTRAINT_UNIQUE") {
       return {
         errors: {
           email:
@@ -39,6 +41,4 @@ export async function signup(prevState, formData) {
     }
     throw error;
   }
-
-  redirect("/training");
 }
