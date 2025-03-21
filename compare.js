@@ -1,29 +1,12 @@
-import { cookies } from "next/headers";
-import { Lucia } from "lucia";
-import { BetterSqlite3Adapter } from "@lucia-auth/adapter-sqlite";
-
 import db from "./db";
 
-const adapter = new BetterSqlite3Adapter(db, {
-  user: "users",
-  session: "sessions",
-});
+export function createUser(email, password) {
+  const result = db
+    .prepare("INSERT INTO users (email, password) VALUES (?, ?)")
+    .run(email, password);
+  return result.lastInsertRowid;
+}
 
-const lucia = new Lucia(adapter, {
-  sessionCookie: {
-    expires: false,
-    attributes: {
-      secure: process.env.NODE_ENV === "production",
-    },
-  },
-});
-
-export async function createAuthSession(userId) {
-  const session = await lucia.createSession(userId, {});
-  const sessionCookie = lucia.createSessionCookie(session.id);
-  cookies().set(
-    sessionCookie.name,
-    sessionCookie.value,
-    sessionCookie.attributes
-  );
+export function getUserByEmail(email) {
+  return db.prepare("SELECT * FROM users WHERE email = ?").get(email);
 }
